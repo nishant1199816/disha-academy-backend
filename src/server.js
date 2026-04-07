@@ -109,3 +109,19 @@ app.listen(PORT, '0.0.0.0', () => {
 })
 
 module.exports = app
+const migrate = require('./db/migrate')
+
+async function startServer() {
+  try {
+    await migrate() // 🔥 ye sabse important hai
+    console.log("DB Ready ✅")
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`)
+    })
+  } catch (err) {
+    console.error("Startup error ❌", err)
+  }
+}
+
+startServer()
