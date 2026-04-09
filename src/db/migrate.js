@@ -1,7 +1,7 @@
 require('dotenv').config()
 const pool = require('./pool')
 
-async function migrate() {
+async function if (require.main === module) { migrate() }
   const client = await pool.connect()
 
   try {
