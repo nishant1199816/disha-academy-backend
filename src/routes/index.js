@@ -5,7 +5,8 @@ const { protect, adminOnly, requireEnrollment } = require('../middleware/auth')
 const authCtrl    = require('../controllers/authController')
 const courseCtrl  = require('../controllers/courseController')
 const paymentCtrl = require('../controllers/paymentController')
-
+const { seedCourses } = require('../controllers/courseController')
+router.get('/courses/seed', seedCourses)
 // ══════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════
