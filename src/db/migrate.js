@@ -3,6 +3,7 @@ const pool = require('./pool')
 
 async function migrate() {
   const client = await pool.connect()
+
   try {
     await client.query('BEGIN')
     console.log('🚀 Running migrations...')
@@ -41,7 +42,7 @@ async function migrate() {
     `)
     console.log('  ✓ courses table')
 
-    // ── Enrollments (payment-gated access) ────────────────────────
+    // ── Enrollments ────────────────────────────────────────────────
     await client.query(`
       CREATE TABLE IF NOT EXISTS enrollments (
         id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -152,14 +153,18 @@ async function migrate() {
 
     await client.query('COMMIT')
     console.log('\n✅ All migrations completed successfully!\n')
+
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('❌ Migration failed:', err.message)
-    process.exit(1)
+
+    // ❗ process.exit hata diya → server crash nahi hoga
+    throw err
+
   } finally {
     client.release()
-    pool.end()
+    // ❗ pool.end() hata diya → connection alive rahega
   }
 }
 
-migrate()
+module.exports = migrate

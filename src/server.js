@@ -16,7 +16,7 @@ app.set('trust proxy', 1)
 // ── Security ─────────────────────────────────────────────────────
 app.use(helmet())
 
-// ── CORS — allow frontend ────────────────────────────────────────
+// ── CORS ─────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -62,12 +62,11 @@ app.use(express.urlencoded({ extended: true }))
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api', routes)
 
-// ── Health check (Railway uses this) ─────────────────────────────
+// ── Health check ─────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({
-    status:    '✅ Online',
-    service:   'Disha Academy API',
-    timestamp: new Date().toISOString(),
+    status: '✅ Online',
+    service: 'Disha Academy API',
   })
 })
 
@@ -75,7 +74,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK' })
 })
 
-// ── 404 handler ──────────────────────────────────────────────────
+// ── 404 ──────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -98,20 +97,21 @@ app.use((err, req, res, next) => {
 // ── Handle unhandled errors ──────────────────────────────────────
 process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err)
-  process.exit(1)
 })
 
-// ── Start Server (ONLY ONCE) ─────────────────────────────────────
+// ── START SERVER ─────────────────────────────────────────────────
 async function startServer() {
   try {
-    await migrate() // DB ready
-    console.log('✅ Database connected')
+    // 🔥 DB ko optional bana diya (crash nahi hoga)
+    try {
+      await migrate()
+      console.log('✅ Database connected')
+    } catch (err) {
+      console.error('⚠️ DB Error:', err.message)
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log('\n🚀 Server Started Successfully')
-      console.log(`🌐 Port: ${PORT}`)
-      console.log(`📦 Env: ${process.env.NODE_ENV || 'development'}`)
-      console.log(`🔗 Health: /health\n`)
+      console.log(`🚀 Server running on port ${PORT}`)
     })
 
   } catch (err) {
