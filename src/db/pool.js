@@ -1,43 +1,23 @@
-// const { Pool } = require('pg')
-// require('dotenv').config()
-
-// const pool = new Pool(
-//   process.env.DATABASE_URL
-//     ? {
-//         connectionString: process.env.DATABASE_URL,
-//         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-//       }
-//     : {
-//         host:     process.env.DB_HOST     || 'localhost',
-//         port:     process.env.DB_PORT     || 5432,
-//         database: process.env.DB_NAME     || 'disha_academy',
-//         user:     process.env.DB_USER     || 'postgres',
-//         password: process.env.DB_PASSWORD || '',
-//       }
-// )
-
-// pool.on('connect', () => {
-//   if (process.env.NODE_ENV !== 'test') console.log('✅ PostgreSQL connected')
-// })
-
-// pool.on('error', (err) => {
-//   console.error('❌ PostgreSQL error:', err.message)
-// })
-
-// module.exports = pool
-
 const { Pool } = require('pg')
 require('dotenv').config()
 
-const isProduction = process.env.NODE_ENV === 'production'
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL missing in environment variables")
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+
   ssl: process.env.DATABASE_URL
-    ? { rejectUnauthorized: false }   // Railway ke liye REQUIRED
-    : false
+    ? { rejectUnauthorized: false } // Railway fix
+    : false,
+
+  max: 10, // max connections
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 })
 
+// ── Events ─────────────────────────────────────────
 pool.on('connect', () => {
   console.log('✅ PostgreSQL connected')
 })
