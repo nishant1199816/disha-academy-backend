@@ -121,3 +121,39 @@ router.get('/setup', async (req, res) => {
 })
 
 module.exports = router
+
+// ── ADMIN COURSE MANAGEMENT ───────────────────────────────────────
+router.post('/admin/courses', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    const { title, slug, exam_type, price, duration, lectures, description } = req.body
+    if (!title || !exam_type || !price) return res.status(400).json({ success: false, message: 'Title, exam_type, price required' })
+    const result = await pool.query(`
+      INSERT INTO courses (title, slug, exam_type, price, duration, lectures, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+    `, [title, slug, exam_type, parseInt(price), duration, parseInt(lectures)||0, description])
+    res.json({ success: true, course: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.delete('/admin/courses/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    await pool.query('UPDATE courses SET is_active=false WHERE id=$1', [req.params.id])
+    res.json({ success: true, message: 'Course deleted' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.delete('/admin/students/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    await pool.query('UPDATE users SET is_active=false WHERE id=$1 AND role=\'student\'', [req.params.id])
+    res.json({ success: true, message: 'Student deleted' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
