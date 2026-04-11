@@ -1,24 +1,27 @@
 const crypto = require('crypto')
 const pool   = require('../db/pool')
 
-// ── Lazy Razorpay init (only when keys exist) ─────────────────────
-const getRazorpay = () => {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    throw new Error('Razorpay keys not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Railway environment variables.')
-  }
-  const Razorpay = require('razorpay')
-  return new Razorpay({
-    key_id:     process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  })
-}
-
 // ── POST /api/payments/create-order ───────────────────────────────
 exports.createOrder = async (req, res) => {
   try {
     const { courseId } = req.body
     if (!courseId) return res.status(400).json({ success: false, message: 'Course ID required.' })
 
+    // Check Razorpay keys
+    const keyId     = process.env.RAZORPAY_KEY_ID
+    const keySecret = process.env.RAZORPAY_KEY_SECRET
+
+    console.log('Razorpay Key ID present:', !!keyId)
+    console.log('Razorpay Key Secret present:', !!keySecret)
+
+    if (!keyId || !keySecret) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay keys not configured on server. Please contact support.'
+      })
+    }
+
+    // Get course
     const courseRes = await pool.query(
       'SELECT id, title, price FROM courses WHERE id = $1 AND is_active = true',
       [courseId]
@@ -28,6 +31,7 @@ exports.createOrder = async (req, res) => {
     }
     const course = courseRes.rows[0]
 
+    // Check already enrolled
     const enrolled = await pool.query(
       'SELECT id FROM enrollments WHERE user_id = $1 AND course_id = $2 AND is_active = true',
       [req.user.id, courseId]
@@ -36,23 +40,31 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You are already enrolled in this course.' })
     }
 
-    const baseAmount  = course.price
+    const baseAmount  = parseInt(course.price)
     const gst         = Math.round(baseAmount * 0.18)
     const total       = baseAmount + gst
     const amountPaise = total * 100
 
-    const razorpay = getRazorpay()
+    console.log('Creating Razorpay order for:', course.title, 'Amount (paise):', amountPaise)
+
+    // Init Razorpay
+    const Razorpay = require('razorpay')
+    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })
+
+    // Create order
     const order = await razorpay.orders.create({
       amount:   amountPaise,
       currency: 'INR',
       notes: {
-        courseId:   course.id,
-        courseName: course.title,
-        userId:     req.user.id,
-        userEmail:  req.user.email,
+        courseId:  course.id,
+        userId:    req.user.id,
+        userEmail: req.user.email,
       },
     })
 
+    console.log('Razorpay order created:', order.id)
+
+    // Save to DB
     await pool.query(`
       INSERT INTO payments (user_id, course_id, razorpay_order_id, amount, currency, status)
       VALUES ($1, $2, $3, $4, 'INR', 'pending')
@@ -62,12 +74,17 @@ exports.createOrder = async (req, res) => {
       success: true,
       order:   { id: order.id, amount: order.amount, currency: order.currency },
       course:  { id: course.id, title: course.title, baseAmount, gst, totalAmount: total },
-      key:     process.env.RAZORPAY_KEY_ID,
+      key:     keyId,
       user:    { name: req.user.name, email: req.user.email, phone: req.user.phone || '' },
     })
   } catch (err) {
-    console.error('Create order error:', err.message)
-    res.status(500).json({ success: false, message: err.message })
+    console.error('Create order error full:', err)
+    console.error('Create order error message:', err?.message)
+    console.error('Create order error stack:', err?.stack)
+    res.status(500).json({
+      success: false,
+      message: err?.message || 'Could not create payment order. Please try again.'
+    })
   }
 }
 
@@ -92,14 +109,21 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed.' })
     }
 
-    // Get payment method from Razorpay
+    // Get payment method
     let paymentMethod = 'upi'
     try {
-      const razorpay = getRazorpay()
+      const Razorpay = require('razorpay')
+      const razorpay = new Razorpay({
+        key_id:     process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      })
       const pd = await razorpay.payments.fetch(razorpay_payment_id)
       paymentMethod = pd.method || 'upi'
-    } catch {}
+    } catch (e) {
+      console.log('Could not fetch payment method:', e.message)
+    }
 
+    // Update payment record
     const payResult = await pool.query(`
       UPDATE payments
       SET razorpay_payment_id=$1, razorpay_signature=$2,
@@ -120,7 +144,7 @@ exports.verifyPayment = async (req, res) => {
     const expiresAt = new Date()
     expiresAt.setMonth(expiresAt.getMonth() + months)
 
-    // Unlock course access
+    // Unlock course
     await pool.query(`
       INSERT INTO enrollments (user_id, course_id, expires_at)
       VALUES ($1, $2, $3)
@@ -140,7 +164,7 @@ exports.verifyPayment = async (req, res) => {
       enrollments: enrollments.rows.map(r => r.course_id),
     })
   } catch (err) {
-    console.error('Verify error:', err.message)
+    console.error('Verify error:', err?.message)
     res.status(500).json({ success: false, message: 'Payment verification error.' })
   }
 }
@@ -151,25 +175,24 @@ exports.webhook = async (req, res) => {
     const signature = req.headers['x-razorpay-signature']
     const body      = req.rawBody || Buffer.from(JSON.stringify(req.body))
 
-    const expected = crypto
-      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || '')
-      .update(body)
-      .digest('hex')
-
-    if (process.env.RAZORPAY_WEBHOOK_SECRET && expected !== signature) {
-      return res.status(400).json({ success: false })
+    if (process.env.RAZORPAY_WEBHOOK_SECRET) {
+      const expected = crypto
+        .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+        .update(body).digest('hex')
+      if (expected !== signature) {
+        return res.status(400).json({ success: false })
+      }
     }
 
     const { event, payload } = req.body
 
     if (event === 'payment.captured') {
       const payment = payload.payment.entity
-      await pool.query(`
-        UPDATE payments SET status='captured', payment_method=$1, verified_at=NOW()
-        WHERE razorpay_order_id=$2 AND status='pending'
-      `, [payment.method, payment.order_id])
+      await pool.query(
+        `UPDATE payments SET status='captured', payment_method=$1, verified_at=NOW() WHERE razorpay_order_id=$2 AND status='pending'`,
+        [payment.method, payment.order_id]
+      )
     }
-
     if (event === 'payment.failed') {
       const payment = payload.payment.entity
       await pool.query(`UPDATE payments SET status='failed' WHERE razorpay_order_id=$1`, [payment.order_id])
@@ -177,7 +200,7 @@ exports.webhook = async (req, res) => {
 
     res.json({ success: true })
   } catch (err) {
-    console.error('Webhook error:', err.message)
+    console.error('Webhook error:', err?.message)
     res.status(500).json({ success: false })
   }
 }
@@ -220,10 +243,7 @@ exports.getAllPayments = async (req, res) => {
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `, [...params, limit, offset])
 
-    const countRes = await pool.query(
-      `SELECT COUNT(*) FROM payments p ${where}`,
-      params
-    )
+    const countRes = await pool.query(`SELECT COUNT(*) FROM payments p ${where}`, params)
 
     res.json({
       success:  true,
