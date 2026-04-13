@@ -157,3 +157,67 @@ router.delete('/admin/students/:id', protect, adminOnly, async (req, res) => {
     res.status(500).json({ success: false, message: err.message })
   }
 })
+
+// ── ADMIN LIVE CLASS MANAGEMENT ───────────────────────────────────
+router.get('/admin/live-classes', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    const result = await pool.query(`
+      SELECT lc.*, c.title AS course_title
+      FROM live_classes lc
+      LEFT JOIN courses c ON c.id = lc.course_id
+      ORDER BY lc.scheduled_at DESC
+      LIMIT 50
+    `)
+    res.json({ success: true, classes: result.rows })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    const { course_id, title, subject, teacher_name, scheduled_at, duration_min } = req.body
+    if (!course_id || !title || !subject || !scheduled_at) {
+      return res.status(400).json({ success: false, message: 'Required fields missing' })
+    }
+    const result = await pool.query(`
+      INSERT INTO live_classes (course_id, title, subject, teacher_name, scheduled_at, duration_min, status)
+      VALUES ($1,$2,$3,$4,$5,$6,'scheduled') RETURNING *
+    `, [course_id, title, subject, teacher_name || 'Disha Faculty', scheduled_at, duration_min || 90])
+    res.json({ success: true, class: result.rows[0] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.post('/admin/live-classes/:id/start', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    await pool.query(`UPDATE live_classes SET status='live' WHERE id=$1`, [req.params.id])
+    res.json({ success: true, message: 'Class is now LIVE!' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.post('/admin/live-classes/:id/end', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    await pool.query(`UPDATE live_classes SET status='ended' WHERE id=$1`, [req.params.id])
+    res.json({ success: true, message: 'Class ended.' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+router.delete('/admin/live-classes/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    await pool.query(`DELETE FROM live_classes WHERE id=$1`, [req.params.id])
+    res.json({ success: true, message: 'Class deleted.' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
