@@ -1,37 +1,37 @@
-const express  = require('express')
-const router   = express.Router()
+const express = require('express')
+const router = express.Router()
 const { protect, adminOnly, requireEnrollment } = require('../middleware/auth')
 
-const authCtrl    = require('../controllers/authController')
-const courseCtrl  = require('../controllers/courseController')
+const authCtrl = require('../controllers/authController')
+const courseCtrl = require('../controllers/courseController')
 const paymentCtrl = require('../controllers/paymentController')
 
 // ── AUTH ──────────────────────────────────────────────────────────
-router.post('/auth/register',        authCtrl.register)
-router.post('/auth/login',           authCtrl.login)
-router.get ('/auth/me',              protect, authCtrl.getMe)
-router.put ('/auth/change-password', protect, authCtrl.changePassword)
+router.post('/auth/register', authCtrl.register)
+router.post('/auth/login', authCtrl.login)
+router.get('/auth/me', protect, authCtrl.getMe)
+router.put('/auth/change-password', protect, authCtrl.changePassword)
 
 // ── COURSES (public) ──────────────────────────────────────────────
-router.get('/courses',     courseCtrl.getAllCourses)
+router.get('/courses', courseCtrl.getAllCourses)
 router.get('/courses/:id', courseCtrl.getCourse)
 
 // ── COURSE CONTENT (enrolled only) ───────────────────────────────
 router.get('/courses/:courseId/live-classes', protect, requireEnrollment, courseCtrl.getLiveClasses)
-router.get('/courses/:courseId/materials',    protect, requireEnrollment, courseCtrl.getMaterials)
+router.get('/courses/:courseId/materials', protect, requireEnrollment, courseCtrl.getMaterials)
 
 // ── STUDENT DASHBOARD ─────────────────────────────────────────────
 router.get('/dashboard', protect, courseCtrl.getStudentDashboard)
 
 // ── PAYMENTS ──────────────────────────────────────────────────────
 router.post('/payments/create-order', protect, paymentCtrl.createOrder)
-router.post('/payments/verify',       protect, paymentCtrl.verifyPayment)
-router.get ('/payments/my-history',   protect, paymentCtrl.getMyHistory)
-router.post('/payments/webhook',             paymentCtrl.webhook)
+router.post('/payments/verify', protect, paymentCtrl.verifyPayment)
+router.get('/payments/my-history', protect, paymentCtrl.getMyHistory)
+router.post('/payments/webhook', paymentCtrl.webhook)
 
 // ── ADMIN ─────────────────────────────────────────────────────────
 router.get('/admin/dashboard', protect, adminOnly, courseCtrl.getAdminDashboard)
-router.get('/admin/payments',  protect, adminOnly, paymentCtrl.getAllPayments)
+router.get('/admin/payments', protect, adminOnly, paymentCtrl.getAllPayments)
 
 // ── SETUP (ek baar run karo seed ke liye) ─────────────────────────
 router.get('/setup', async (req, res) => {
@@ -50,14 +50,14 @@ router.get('/setup', async (req, res) => {
 
     // Seed courses
     const courses = [
-      { title: 'SSC CGL — Complete Batch 2025',       slug: 'ssc-cgl-2025',           exam: 'SSC CGL',           price: 4999, dur: '6 months', lec: 200 },
-      { title: 'SSC CHSL — Full Course 2025',         slug: 'ssc-chsl-2025',          exam: 'SSC CHSL',          price: 3999, dur: '4 months', lec: 150 },
-      { title: 'Delhi Police Constable Batch',        slug: 'delhi-police-2025',      exam: 'Delhi Police',      price: 3499, dur: '4 months', lec: 160 },
-      { title: 'UP Police Constable Batch',           slug: 'up-police-2025',         exam: 'UP Police',         price: 2999, dur: '3 months', lec: 120 },
-      { title: 'Haryana Police Constable Batch',      slug: 'haryana-police-2025',    exam: 'Haryana Police',    price: 2999, dur: '3 months', lec: 110 },
-      { title: 'Chandigarh Police Constable Batch',   slug: 'chandigarh-police-2025', exam: 'Chandigarh Police', price: 2499, dur: '3 months', lec: 100 },
-      { title: 'Railway RRB NTPC + Group D Batch',    slug: 'railway-rrb-2025',       exam: 'Railway',           price: 3999, dur: '5 months', lec: 180 },
-      { title: 'DSSSB — DASS Grade II / ASO Batch',   slug: 'dsssb-2025',             exam: 'DSSSB',             price: 4499, dur: '5 months', lec: 160 },
+      { title: 'SSC CGL — Complete Batch 2025', slug: 'ssc-cgl-2025', exam: 'SSC CGL', price: 4999, dur: '6 months', lec: 200 },
+      { title: 'SSC CHSL — Full Course 2025', slug: 'ssc-chsl-2025', exam: 'SSC CHSL', price: 3999, dur: '4 months', lec: 150 },
+      { title: 'Delhi Police Constable Batch', slug: 'delhi-police-2025', exam: 'Delhi Police', price: 3499, dur: '4 months', lec: 160 },
+      { title: 'UP Police Constable Batch', slug: 'up-police-2025', exam: 'UP Police', price: 2999, dur: '3 months', lec: 120 },
+      { title: 'Haryana Police Constable Batch', slug: 'haryana-police-2025', exam: 'Haryana Police', price: 2999, dur: '3 months', lec: 110 },
+      { title: 'Chandigarh Police Constable Batch', slug: 'chandigarh-police-2025', exam: 'Chandigarh Police', price: 2499, dur: '3 months', lec: 100 },
+      { title: 'Railway RRB NTPC + Group D Batch', slug: 'railway-rrb-2025', exam: 'Railway', price: 3999, dur: '5 months', lec: 180 },
+      { title: 'DSSSB — DASS Grade II / ASO Batch', slug: 'dsssb-2025', exam: 'DSSSB', price: 4499, dur: '5 months', lec: 160 },
     ]
 
     for (const c of courses) {
@@ -66,7 +66,7 @@ router.get('/setup', async (req, res) => {
         VALUES ($1,$2,$3,$4,$5,$6,$7)
         ON CONFLICT (slug) DO UPDATE SET title=$1, price=$4
       `, [c.title, c.slug, c.exam, c.price, c.dur, c.lec,
-          `${c.exam} ki complete preparation — Maths, Reasoning, English, GS sab covered.`])
+      `${c.exam} ki complete preparation — Maths, Reasoning, English, GS sab covered.`])
     }
 
     // Seed admin user
@@ -92,8 +92,8 @@ router.get('/setup', async (req, res) => {
       const cid = cglRes.rows[0].id
       const classes = [
         { title: 'Number System & Simplification', subject: 'Mathematics', mins: 30 },
-        { title: 'Syllogism & Puzzles',             subject: 'Reasoning',   mins: 90 },
-        { title: 'Error Detection & Para Jumbles',  subject: 'English',     mins: 210 },
+        { title: 'Syllogism & Puzzles', subject: 'Reasoning', mins: 90 },
+        { title: 'Error Detection & Para Jumbles', subject: 'English', mins: 210 },
       ]
       for (const cls of classes) {
         const t = new Date()
@@ -109,9 +109,9 @@ router.get('/setup', async (req, res) => {
       success: true,
       message: '✅ Database seeded successfully!',
       data: {
-        courses:  8,
-        admin:    'admin@disha.com / admin123',
-        student:  'student@disha.com / student123',
+        courses: 8,
+        admin: 'admin@disha.com / admin123',
+        student: 'student@disha.com / student123',
       }
     })
   } catch (err) {
@@ -171,7 +171,7 @@ router.post('/admin/courses', protect, adminOnly, async (req, res) => {
     const result = await pool.query(`
       INSERT INTO courses (title, slug, exam_type, price, duration, lectures, description)
       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
-    `, [title, slug, exam_type, parseInt(price), duration, parseInt(lectures)||0, description])
+    `, [title, slug, exam_type, parseInt(price), duration, parseInt(lectures) || 0, description])
     res.json({ success: true, course: result.rows[0] })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -199,11 +199,12 @@ router.delete('/admin/students/:id', protect, adminOnly, async (req, res) => {
 })
 
 // ── ADMIN LIVE CLASS MANAGEMENT ───────────────────────────────────
+// ── ADMIN LIVE CLASS MANAGEMENT ───────────────────────────────────
 router.get('/admin/live-classes', protect, adminOnly, async (req, res) => {
   try {
     const pool = require('../db/pool')
     const result = await pool.query(`
-      SELECT lc.*, c.title AS course_title
+      SELECT lc.*, c.title AS course_title,lc.meeting_url
       FROM live_classes lc
       LEFT JOIN courses c ON c.id = lc.course_id
       ORDER BY lc.scheduled_at DESC
@@ -219,21 +220,29 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
   try {
     const pool = require('../db/pool')
 
-    const { course_id, title, subject, teacher_name, scheduled_at, duration_min } = req.body
+    const {
+      course_id,
+      title,
+      subject,
+      teacher_name,
+      scheduled_at,
+      duration_min,
+      meeting_url   // ✅ NEW (optional)
+    } = req.body
 
     if (!course_id || !title || !subject || !scheduled_at) {
       return res.status(400).json({ success: false, message: 'Required fields missing' })
     }
 
-    // 🔥 IMPORTANT — SAME ROOM ID
+    // 🔥 AUTO ROOM (JITSI)
     const stream_url = 'disha-' + Date.now()
 
     const result = await pool.query(`
       INSERT INTO live_classes (
         course_id, title, subject, teacher_name,
-        scheduled_at, duration_min, status, stream_url
+        scheduled_at, duration_min, status, stream_url, meeting_url
       )
-      VALUES ($1,$2,$3,$4,$5,$6,'scheduled',$7)
+      VALUES ($1,$2,$3,$4,$5,$6,'scheduled',$7,$8)
       RETURNING *
     `, [
       course_id,
@@ -242,7 +251,8 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
       teacher_name || 'Disha Faculty',
       scheduled_at,
       duration_min || 90,
-      stream_url
+      stream_url,
+      meeting_url || null   // ✅ safe fallback
     ])
 
     res.json({ success: true, class: result.rows[0] })

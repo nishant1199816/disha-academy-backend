@@ -79,6 +79,8 @@ exports.getCourse = async (req, res) => {
 // ── GET /api/courses/:courseId/live-classes ────────────────────────
 exports.getLiveClasses = async (req, res) => {
   try {
+    const pool = require('../db/pool') // agar already top me hai toh skip kar
+
     const result = await pool.query(`
       SELECT * FROM live_classes
       WHERE course_id = $1
@@ -162,7 +164,7 @@ exports.getStudentDashboard = async (req, res) => {
 
     const upcoming = await pool.query(`
       SELECT lc.id, lc.title, lc.subject, lc.teacher_name,
-             lc.scheduled_at, lc.status, lc.stream_url,
+             lc.scheduled_at, lc.status, lc.stream_url,lc.meeting_url,
              c.title AS course_title
       FROM live_classes lc
       JOIN courses c ON c.id = lc.course_id
