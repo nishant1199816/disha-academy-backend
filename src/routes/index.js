@@ -120,6 +120,46 @@ router.get('/setup', async (req, res) => {
   }
 })
 
+
+// ── STUDENT: Get recorded lectures ───────────────────────────────
+router.get('/live-classes/recordings', protect, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    // Get all ended classes with recordings for enrolled courses
+    const result = await pool.query(`
+      SELECT lc.id, lc.title, lc.subject, lc.teacher_name,
+             lc.scheduled_at, lc.recording_url, c.title AS course_title
+      FROM live_classes lc
+      JOIN courses c ON c.id = lc.course_id
+      JOIN enrollments e ON e.course_id = c.id
+      WHERE e.user_id = $1
+        AND e.is_active = true
+        AND lc.status = 'ended'
+        AND lc.recording_url IS NOT NULL
+      ORDER BY lc.scheduled_at DESC
+    `, [req.user.id])
+    res.json({ success: true, classes: result.rows })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// ── ADMIN: Add recording URL to ended class ───────────────────────
+router.post('/admin/live-classes/:id/recording', protect, adminOnly, async (req, res) => {
+  try {
+    const pool = require('../db/pool')
+    const { recording_url } = req.body
+    if (!recording_url) return res.status(400).json({ success: false, message: 'Recording URL required' })
+    await pool.query(
+      'UPDATE live_classes SET recording_url = $1 WHERE id = $2',
+      [recording_url, req.params.id]
+    )
+    res.json({ success: true, message: 'Recording added!' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 module.exports = router
 
 // ── ADMIN COURSE MANAGEMENT ───────────────────────────────────────
