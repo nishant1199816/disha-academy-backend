@@ -170,8 +170,7 @@ exports.getStudentDashboard = async (req, res) => {
         ON e.course_id = c.id 
        AND e.user_id = $1 
        AND e.is_active = true
-      WHERE lc.scheduled_at >= NOW() - INTERVAL '1 hour'
-        AND lc.status IN ('scheduled','live')
+      WHERE lc.status IN ('scheduled','live')
       ORDER BY lc.scheduled_at ASC
       LIMIT 5
     `, [userId])

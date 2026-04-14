@@ -218,15 +218,35 @@ router.get('/admin/live-classes', protect, adminOnly, async (req, res) => {
 router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
   try {
     const pool = require('../db/pool')
+
     const { course_id, title, subject, teacher_name, scheduled_at, duration_min } = req.body
+
     if (!course_id || !title || !subject || !scheduled_at) {
       return res.status(400).json({ success: false, message: 'Required fields missing' })
     }
+
+    // 🔥 IMPORTANT — SAME ROOM ID
+    const stream_url = 'disha-' + Date.now()
+
     const result = await pool.query(`
-      INSERT INTO live_classes (course_id, title, subject, teacher_name, scheduled_at, duration_min, status)
-      VALUES ($1,$2,$3,$4,$5,$6,'scheduled') RETURNING *
-    `, [course_id, title, subject, teacher_name || 'Disha Faculty', scheduled_at, duration_min || 90])
+      INSERT INTO live_classes (
+        course_id, title, subject, teacher_name,
+        scheduled_at, duration_min, status, stream_url
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,'scheduled',$7)
+      RETURNING *
+    `, [
+      course_id,
+      title,
+      subject,
+      teacher_name || 'Disha Faculty',
+      scheduled_at,
+      duration_min || 90,
+      stream_url
+    ])
+
     res.json({ success: true, class: result.rows[0] })
+
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
