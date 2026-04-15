@@ -235,7 +235,7 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
     }
 
     // 🔥 AUTO ROOM (JITSI)
-    const stream_url = 'disha-' + Date.now()
+    const stream_url = 'disha-class'
 
     const result = await pool.query(`
       INSERT INTO live_classes (
@@ -251,7 +251,7 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
       teacher_name || 'Disha Faculty',
       scheduled_at,
       duration_min || 90,
-      stream_url,
+      'disha-class',
       meeting_url || null   // ✅ safe fallback
     ])
 
