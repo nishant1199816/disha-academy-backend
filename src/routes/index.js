@@ -234,8 +234,10 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Required fields missing' })
     }
 
-    // 🔥 AUTO ROOM (JITSI)
-    const stream_url = 'disha-class'
+    // Auto-generate unique Jitsi room per class
+    // Format: disha-{subject-slug}-{timestamp} — impossible to guess
+    const subjectSlug = (subject || 'class').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const stream_url = `disha-${subjectSlug}-${Date.now()}`
 
     const result = await pool.query(`
       INSERT INTO live_classes (
@@ -251,8 +253,8 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
       teacher_name || 'Disha Faculty',
       scheduled_at,
       duration_min || 90,
-      'disha-class',
-      meeting_url || null   // ✅ safe fallback
+      stream_url,
+      meeting_url || null
     ])
 
     res.json({ success: true, class: result.rows[0] })
