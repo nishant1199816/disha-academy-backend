@@ -237,8 +237,7 @@ router.post('/admin/live-classes', protect, adminOnly, async (req, res) => {
     // Auto-generate unique Jitsi room per class
     // Format: disha-{subject-slug}-{timestamp} — impossible to guess
     const subjectSlug = (subject || 'class').toLowerCase().replace(/[^a-z0-9]/g, '')
-    const stream_url = `disha-${subjectSlug}-${Date.now()}`
-
+    const stream_url = `disha-${subjectSlug}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const result = await pool.query(`
       INSERT INTO live_classes (
         course_id, title, subject, teacher_name,
